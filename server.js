@@ -30,11 +30,16 @@ if (!process.env.AUTH_USERNAME || !process.env.AUTH_PASSWORD) {
 }
 
 // Configure multer for file uploads
+// Use /tmp for Vercel (serverless), or uploads/ for local development
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+const uploadDir = isVercel ? '/tmp' : path.join(__dirname, 'uploads');
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!isVercel) {
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
     }
     cb(null, uploadDir);
   },
@@ -303,11 +308,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'WordPress Bulk Uploader Server is running' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🌐 WordPress Bulk Uploader Web Interface`);
-  console.log(`📡 Server running at http://localhost:${PORT}`);
-  console.log(`🔐 Authentication enabled`);
-  console.log(`\n💡 Open your browser and navigate to: http://localhost:${PORT}`);
-  console.log(`   Username: ${AUTH_USERNAME}`);
-  console.log(`   Password: ${'*'.repeat(AUTH_PASSWORD.length)}\n`);
-});
+// Export for Vercel serverless, or start server for local/dev
+if (process.env.VERCEL || process.env.VERCEL_ENV) {
+  // Running on Vercel - export the app
+  export default app;
+} else {
+  // Running locally - start the server
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🌐 WordPress Bulk Uploader Web Interface`);
+    console.log(`📡 Server running at http://localhost:${PORT}`);
+    console.log(`🔐 Authentication enabled`);
+    console.log(`\n💡 Open your browser and navigate to: http://localhost:${PORT}`);
+    console.log(`   Username: ${AUTH_USERNAME}`);
+    console.log(`   Password: ${'*'.repeat(AUTH_PASSWORD.length)}\n`);
+  });
+}
