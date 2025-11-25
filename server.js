@@ -169,14 +169,17 @@ app.post('/logout', (req, res) => {
 });
 
 // Clean up expired sessions periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [sessionId, session] of sessions.entries()) {
-    if (session.expiresAt < now) {
-      sessions.delete(sessionId);
+// Disabled for Vercel (serverless functions don't persist state)
+if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [sessionId, session] of sessions.entries()) {
+      if (session.expiresAt < now) {
+        sessions.delete(sessionId);
+      }
     }
-  }
-}, 60 * 60 * 1000); // Run every hour
+  }, 60 * 60 * 1000); // Run every hour
+}
 
 // Serve login page assets (CSS, JS) without authentication
 app.use('/login.css', express.static(path.join(__dirname, 'public', 'login.css')));
@@ -308,12 +311,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'WordPress Bulk Uploader Server is running' });
 });
 
-// Export for Vercel serverless, or start server for local/dev
-if (process.env.VERCEL || process.env.VERCEL_ENV) {
-  // Running on Vercel - export the app
-  export default app;
-} else {
-  // Running locally - start the server
+// Export for Vercel serverless (always export for ES modules compatibility)
+export default app;
+
+// Only start server when running locally (not on Vercel)
+if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🌐 WordPress Bulk Uploader Web Interface`);
     console.log(`📡 Server running at http://localhost:${PORT}`);
