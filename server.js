@@ -311,14 +311,38 @@ function broadcastProgress(sessionId, progress) {
   }
 }
 
+// Helper function to load clients config (same logic as bulk-upload.js)
+function loadClientsConfig() {
+  // First, try to load from environment variable (CLIENTS_CONFIG)
+  if (process.env.CLIENTS_CONFIG) {
+    try {
+      return JSON.parse(process.env.CLIENTS_CONFIG);
+    } catch (error) {
+      console.error('❌ Failed to parse CLIENTS_CONFIG environment variable:', error.message);
+      console.error('   Falling back to clients.json file...');
+    }
+  }
+  
+  // Fallback to clients.json file
+  const clientsPath = path.join(__dirname, 'clients.json');
+  if (!fs.existsSync(clientsPath)) {
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(clientsPath, 'utf-8'));
+  } catch (error) {
+    console.error('❌ Failed to parse clients.json:', error.message);
+    return {};
+  }
+}
+
 // Add endpoint to get available clients
 app.get('/api/clients', requireAuth, (req, res) => {
   try {
-    const clientsPath = path.join(__dirname, 'clients.json');
-    if (!fs.existsSync(clientsPath)) {
+    const clients = loadClientsConfig();
+    if (!clients || Object.keys(clients).length === 0) {
       return res.json({ clients: [] });
     }
-    const clients = JSON.parse(fs.readFileSync(clientsPath, 'utf-8'));
     // Return only client keys and names (not sensitive data)
     const clientList = Object.keys(clients).map(key => ({
       key: key,

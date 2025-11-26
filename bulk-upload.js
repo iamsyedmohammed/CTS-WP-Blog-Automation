@@ -22,17 +22,35 @@ let logResults = [];
 let startTime = Date.now();
 
 /**
- * Load clients configuration from clients.json
+ * Load clients configuration from environment variable or clients.json
  */
 function loadClientsConfig() {
+  // First, try to load from environment variable (CLIENTS_CONFIG)
+  if (process.env.CLIENTS_CONFIG) {
+    try {
+      const clientsConfig = JSON.parse(process.env.CLIENTS_CONFIG);
+      console.log('✅ Loaded client configurations from environment variable');
+      return clientsConfig;
+    } catch (error) {
+      console.error('❌ Failed to parse CLIENTS_CONFIG environment variable:', error.message);
+      console.error('   Falling back to clients.json file...');
+    }
+  }
+  
+  // Fallback to clients.json file
   const configPath = path.join(__dirname, 'clients.json');
   if (!fs.existsSync(configPath)) {
-    console.error('❌ clients.json not found. Please create it with your client configurations.');
-    console.error('   See README.md for instructions on creating clients.json');
+    console.error('❌ No client configuration found.');
+    console.error('   Please either:');
+    console.error('   1. Set CLIENTS_CONFIG environment variable with JSON configuration, or');
+    console.error('   2. Create clients.json file with your client configurations.');
+    console.error('   See README.md for instructions.');
     process.exit(1);
   }
   try {
-    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    console.log('✅ Loaded client configurations from clients.json file');
+    return config;
   } catch (error) {
     console.error('❌ Failed to parse clients.json:', error.message);
     process.exit(1);
