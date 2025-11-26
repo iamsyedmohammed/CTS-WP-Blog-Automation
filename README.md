@@ -10,13 +10,7 @@ A production-ready Node.js command-line tool that reads a CSV file of blog posts
 - ✅ Idempotent operations (update if slug exists, else create)
 - ✅ Automatic category/tag creation
 - ✅ Featured image upload support (local files and URLs)
-- ✅ **SEO Support** - Full SEO meta fields (Yoast SEO & Rank Math compatible)
-  - Meta descriptions, focus keywords, SEO titles
-  - Open Graph and Twitter Card support
-  - Canonical URLs, noindex/nofollow settings
-  - Schema.org JSON-LD structured data
 - ✅ ACF (Advanced Custom Fields) support
-- ✅ Author assignment support
 - ✅ Rate limiting to avoid throttling
 - ✅ Comprehensive logging
 - ✅ Error handling and recovery
@@ -99,37 +93,14 @@ Your CSV file should have the following columns:
 - `slug` - Custom URL slug (if not provided, WordPress will generate one)
 - `excerpt` - Post excerpt
 - `featured_image_path` - Local file path to featured image (relative to script directory)
-- `featured_image_url` - URL to featured image (supports Unsplash, etc.)
-- `author` - Author username or email (must exist in WordPress)
 - `acf_json` - JSON string for ACF fields (e.g., `{"field_name": "value"}`)
-
-### SEO Columns (Optional)
-
-- `meta_description` - Meta description for search engines (supports Yoast SEO & Rank Math)
-- `focus_keyword` or `primary_keyword` - Primary SEO keyword/focus keyword
-- `seo_title` - Custom SEO title (different from post title)
-- `og_title` - Open Graph title for social media sharing
-- `og_description` - Open Graph description for social media sharing
-- `twitter_title` - Twitter card title
-- `twitter_description` - Twitter card description
-- `canonical_url` - Canonical URL for the post
-- `noindex` - Set to "yes" to prevent search engine indexing
-- `nofollow` - Set to "yes" to add nofollow to links
-- `schema_json` - JSON-LD structured data (e.g., `{"@type": "Article", "headline": "..."}`)
 
 ### Example CSV
 
 ```csv
-title,content,status,categories,tags,slug,excerpt,featured_image_url,meta_description,focus_keyword,seo_title,og_title,og_description,canonical_url,author,acf_json
-"My First Post","<p>This is the content.</p>",draft,"Tutorials",beginner,my-first-post,"A great post","https://images.unsplash.com/photo-123","Learn about my first post with this comprehensive guide","wordpress tutorial","My First Post - Complete Guide | Your Site","My First Post - Complete Guide","Discover everything about my first post","https://yoursite.com/my-first-post","admin@yoursite.com",
-"Another Post","<p>More content here.</p>",publish,"News,Updates",news,another-post,"Another great post","https://images.unsplash.com/photo-456","Stay updated with the latest news and updates","news update","Latest News and Updates | Your Site","Latest News and Updates","Get the latest news and updates","https://yoursite.com/another-post","admin@yoursite.com","{""author"": ""John Doe""}"
-```
-
-### SEO Example with All Fields
-
-```csv
-title,content,status,meta_description,focus_keyword,seo_title,og_title,og_description,twitter_title,twitter_description,canonical_url,noindex,nofollow
-"SEO Optimized Post","<p>Content here</p>",publish,"A comprehensive guide about SEO optimization for WordPress websites","seo optimization","SEO Optimization Guide - Best Practices 2024","SEO Optimization Guide","Learn the best SEO practices for WordPress in 2024","SEO Guide 2024","Master SEO for WordPress with our comprehensive guide","https://yoursite.com/seo-guide",,
+title,content,status,categories,tags,slug,excerpt,featured_image_path,acf_json
+"My First Post","<p>This is the content.</p>",draft,"Tutorials",beginner,my-first-post,"A great post",,
+"Another Post","<p>More content here.</p>",publish,"News,Updates",news,another-post,"Another great post",images/featured.jpg,"{""author"": ""John Doe""}"
 ```
 
 ## Usage

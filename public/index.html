@@ -3,40 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Primary Meta Tags -->
-    <title>WordPress Bulk Uploader - Bulk Import Posts via CSV</title>
-    <meta name="title" content="WordPress Bulk Uploader - Bulk Import Posts via CSV">
-    <meta name="description" content="Efficiently bulk upload and import WordPress blog posts from CSV files. Streamline your content management with our easy-to-use bulk uploader tool.">
-    <meta name="keywords" content="wordpress bulk uploader, csv import, wordpress posts, bulk import, wordpress automation, content management">
-    <meta name="author" content="WordPress Bulk Uploader">
-    <meta name="robots" content="index, follow">
-    <meta name="language" content="English">
-    <meta name="revisit-after" content="7 days">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://wordpress-bulk-uploader.vercel.app/">
-    <meta property="og:title" content="WordPress Bulk Uploader - Bulk Import Posts via CSV">
-    <meta property="og:description" content="Efficiently bulk upload and import WordPress blog posts from CSV files. Streamline your content management with our easy-to-use bulk uploader tool.">
-    <meta property="og:image" content="https://wordpress-bulk-uploader.vercel.app/og-image.png">
-    <meta property="og:site_name" content="WordPress Bulk Uploader">
-    <meta property="og:locale" content="en_US">
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://wordpress-bulk-uploader.vercel.app/">
-    <meta property="twitter:title" content="WordPress Bulk Uploader - Bulk Import Posts via CSV">
-    <meta property="twitter:description" content="Efficiently bulk upload and import WordPress blog posts from CSV files. Streamline your content management with our easy-to-use bulk uploader tool.">
-    <meta property="twitter:image" content="https://wordpress-bulk-uploader.vercel.app/og-image.png">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://wordpress-bulk-uploader.vercel.app/">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    
-    <!-- Stylesheets -->
+    <title>WordPress Bulk Uploader</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -54,8 +21,18 @@
             </div>
         </div>
 
+        <div class="client-selector-section">
+            <label for="clientSelect" class="client-label">
+                <i class="fas fa-building"></i> Select Client:
+            </label>
+            <select id="clientSelect" name="client" class="client-select">
+                <option value="default">Loading clients...</option>
+            </select>
+        </div>
+
         <div class="upload-section">
             <form id="uploadForm" enctype="multipart/form-data">
+                <input type="hidden" id="selectedClient" name="client" value="default">
                 <div class="file-input-wrapper">
                     <input type="file" id="csvFile" name="csvfile" accept=".csv" required>
                     <label for="csvFile" class="file-label" id="fileLabel">

@@ -13,6 +13,49 @@ const selectedFileInfo = document.getElementById('selectedFileInfo');
 const selectedFileName = document.getElementById('selectedFileName');
 const clearFileBtn = document.getElementById('clearFileBtn');
 
+const clientSelect = document.getElementById('clientSelect');
+const selectedClientInput = document.getElementById('selectedClient');
+
+// Load available clients on page load
+async function loadClients() {
+    try {
+        const response = await fetch('/api/clients', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        clientSelect.innerHTML = '';
+        if (data.clients && data.clients.length > 0) {
+            data.clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.key;
+                option.textContent = client.name;
+                clientSelect.appendChild(option);
+            });
+            
+            // Set default client
+            selectedClientInput.value = data.clients[0].key;
+        } else {
+            // Fallback if no clients found
+            const option = document.createElement('option');
+            option.value = 'default';
+            option.textContent = 'Default';
+            clientSelect.appendChild(option);
+        }
+    } catch (error) {
+        console.error('Error loading clients:', error);
+        clientSelect.innerHTML = '<option value="default">Default</option>';
+    }
+}
+
+// Update client selection
+clientSelect.addEventListener('change', (e) => {
+    selectedClientInput.value = e.target.value;
+});
+
+// Load clients when page loads
+loadClients();
+
 // Show selected file name and lock selection
 fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -101,6 +144,7 @@ form.addEventListener('submit', async (e) => {
         const formData = new FormData();
         formData.append('csvfile', file);
         formData.append('sessionId', sessionId);
+        formData.append('client', selectedClientInput.value); // Add client selection
 
         const response = await fetch('/upload', {
             method: 'POST',

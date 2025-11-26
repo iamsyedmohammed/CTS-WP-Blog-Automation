@@ -311,26 +311,47 @@ function broadcastProgress(sessionId, progress) {
   }
 }
 
+// Add endpoint to get available clients
+app.get('/api/clients', requireAuth, (req, res) => {
+  try {
+    const clientsPath = path.join(__dirname, 'clients.json');
+    if (!fs.existsSync(clientsPath)) {
+      return res.json({ clients: [] });
+    }
+    const clients = JSON.parse(fs.readFileSync(clientsPath, 'utf-8'));
+    // Return only client keys and names (not sensitive data)
+    const clientList = Object.keys(clients).map(key => ({
+      key: key,
+      name: clients[key].name || key
+    }));
+    res.json({ clients: clientList });
+  } catch (error) {
+    console.error('Error loading clients:', error);
+    res.status(500).json({ error: 'Failed to load clients' });
+  }
+});
+
 // Upload and process CSV
 app.post('/upload', upload.single('csvfile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  // Get sessionId from form data or generate one
+  // Get sessionId and client from form data
   const sessionId = req.body.sessionId || Date.now().toString();
+  const clientKey = req.body.client || 'default'; // Get client from form data
 
   try {
     const csvPath = req.file.path;
-    console.log(`Processing uploaded file: ${csvPath}`);
+    console.log(`Processing uploaded file: ${csvPath} for client: ${clientKey}`);
     
     // Progress callback - broadcast immediately to SSE connections
     const progressCallback = (progress) => {
       broadcastProgress(sessionId, progress);
     };
     
-    // Process the CSV file using the existing bulk upload logic
-    const result = await processCsvFile(csvPath, progressCallback);
+    // Process the CSV file using the existing bulk upload logic with client selection
+    const result = await processCsvFile(csvPath, progressCallback, clientKey);
     
     // Clean up uploaded file after processing
     fs.unlinkSync(csvPath);

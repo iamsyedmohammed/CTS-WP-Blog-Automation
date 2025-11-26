@@ -13,34 +13,86 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config();
 
-// Configuration
-const WP_SITE = process.env.WP_SITE?.replace(/\/$/, '') || '';
-const WP_USER = process.env.WP_USER || '';
-const WP_APP_PASSWORD = process.env.WP_APP_PASSWORD || '';
-const CSV_PATH = process.env.CSV_PATH || 'posts.csv';
-const DEFAULT_STATUS = process.env.DEFAULT_STATUS || 'draft';
-const REQUEST_DELAY_MS = parseInt(process.env.REQUEST_DELAY_MS || '300', 10);
-
-// Validate required config
-if (!WP_SITE || !WP_USER || !WP_APP_PASSWORD) {
-  console.error('❌ Missing required environment variables: WP_SITE, WP_USER, WP_APP_PASSWORD');
-  process.exit(1);
-}
-
-// Create axios instance with auth
-const auth = Buffer.from(`${WP_USER}:${WP_APP_PASSWORD}`).toString('base64');
-const api = axios.create({
-  baseURL: `${WP_SITE}/wp-json/wp/v2`,
-  headers: {
-    'Authorization': `Basic ${auth}`,
-    'inContent-Type': 'application/json',
-  },
-  timeout: 30000,
-});
+// Global state for current client configuration
+let currentConfig = null;
+let currentApi = null;
 
 // Logging
 let logResults = [];
 let startTime = Date.now();
+
+/**
+ * Load clients configuration from clients.json
+ */
+function loadClientsConfig() {
+  const configPath = path.join(__dirname, 'clients.json');
+  if (!fs.existsSync(configPath)) {
+    console.error('❌ clients.json not found. Please create it with your client configurations.');
+    console.error('   See README.md for instructions on creating clients.json');
+    process.exit(1);
+  }
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch (error) {
+    console.error('❌ Failed to parse clients.json:', error.message);
+    process.exit(1);
+  }
+}
+
+/**
+ * Get client configuration
+ */
+function getClientConfig(clientKey = 'default') {
+  const clients = loadClientsConfig();
+  if (!clients[clientKey]) {
+    console.error(`❌ Client "${clientKey}" not found in clients.json`);
+    console.error(`Available clients: ${Object.keys(clients).join(', ')}`);
+    process.exit(1);
+  }
+  return clients[clientKey];
+}
+
+/**
+ * Initialize configuration and API instance for a client
+ */
+function initializeClient(clientKey = null) {
+  // Try to get client from environment variable first, then parameter, then default
+  const selectedClient = clientKey || process.env.CLIENT || 'default';
+  const clientConfig = getClientConfig(selectedClient);
+  
+  // Fallback to environment variables if not in config
+  const config = {
+    WP_SITE: (clientConfig.wp_site || process.env.WP_SITE || '').replace(/\/$/, ''),
+    WP_USER: clientConfig.wp_user || process.env.WP_USER || '',
+    WP_APP_PASSWORD: clientConfig.wp_app_password || process.env.WP_APP_PASSWORD || '',
+    DEFAULT_STATUS: clientConfig.default_status || process.env.DEFAULT_STATUS || 'draft',
+    REQUEST_DELAY_MS: parseInt(clientConfig.request_delay_ms || process.env.REQUEST_DELAY_MS || '300', 10),
+    CLIENT_NAME: clientConfig.name || selectedClient,
+    CLIENT_KEY: selectedClient
+  };
+  
+  // Validate required config
+  if (!config.WP_SITE || !config.WP_USER || !config.WP_APP_PASSWORD) {
+    throw new Error(`Missing required configuration for client "${selectedClient}": WP_SITE, WP_USER, WP_APP_PASSWORD`);
+  }
+
+  // Create axios instance with auth
+  const auth = Buffer.from(`${config.WP_USER}:${config.WP_APP_PASSWORD}`).toString('base64');
+  const api = axios.create({
+    baseURL: `${config.WP_SITE}/wp-json/wp/v2`,
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    timeout: 30000,
+  });
+
+  // Store current config and API
+  currentConfig = config;
+  currentApi = api;
+
+  return { config, api };
+}
 
 /**
  * Sleep for specified milliseconds
@@ -99,10 +151,14 @@ async function loadCsv(filePath) {
 /**
  * Check WordPress REST API connectivity
  */
-async function checkConnectivity() {
+async function checkConnectivity(apiInstance = currentApi, siteUrl = currentConfig?.WP_SITE) {
+  if (!apiInstance) {
+    console.error('❌ API instance not initialized. Call initializeClient() first.');
+    return false;
+  }
   try {
     console.log('🔍 Checking WordPress REST API connectivity...');
-    const response = await api.get('/posts', { params: { per_page: 1 } });
+    const response = await apiInstance.get('/posts', { params: { per_page: 1 } });
     console.log('✅ WordPress REST API is accessible\n');
     return true;
   } catch (error) {
@@ -111,7 +167,7 @@ async function checkConnectivity() {
     } else if (error.response?.status === 403) {
       console.error('❌ REST API is blocked. Enable it in WordPress settings.');
     } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-      console.error(`❌ Cannot reach ${WP_SITE}. Check WP_SITE URL.`);
+      console.error(`❌ Cannot reach ${siteUrl || 'WordPress site'}. Check WP_SITE URL.`);
     } else {
       console.error(`❌ Connectivity check failed: ${error.message}`);
     }
@@ -122,14 +178,18 @@ async function checkConnectivity() {
 /**
  * Get or create a taxonomy term (category or tag)
  */
-async function getOrCreateTerm(name, taxonomy = 'categories') {
+async function getOrCreateTerm(name, taxonomy = 'categories', apiInstance = currentApi, delayMs = currentConfig?.REQUEST_DELAY_MS || 300) {
   if (!name || !name.trim()) return null;
+  if (!apiInstance) {
+    console.error('❌ API instance not initialized.');
+    return null;
+  }
 
   const trimmedName = name.trim();
   
   try {
     // Search for existing term
-    const searchResponse = await api.get(`/${taxonomy}`, {
+    const searchResponse = await apiInstance.get(`/${taxonomy}`, {
       params: { search: trimmedName, per_page: 100 },
     });
 
@@ -142,8 +202,8 @@ async function getOrCreateTerm(name, taxonomy = 'categories') {
     }
 
     // Create new term
-    await sleep(REQUEST_DELAY_MS);
-    const createResponse = await api.post(`/${taxonomy}`, {
+    await sleep(delayMs);
+    const createResponse = await apiInstance.post(`/${taxonomy}`, {
       name: trimmedName,
     });
 
@@ -157,18 +217,18 @@ async function getOrCreateTerm(name, taxonomy = 'categories') {
 /**
  * Resolve multiple terms from comma-separated string
  */
-async function resolveTerms(termString, taxonomy) {
+async function resolveTerms(termString, taxonomy, apiInstance = currentApi, delayMs = currentConfig?.REQUEST_DELAY_MS || 300) {
   if (!termString || !termString.trim()) return [];
 
   const names = termString.split(',').map(n => n.trim()).filter(Boolean);
   const termIds = [];
 
   for (const name of names) {
-    const id = await getOrCreateTerm(name, taxonomy);
+    const id = await getOrCreateTerm(name, taxonomy, apiInstance, delayMs);
     if (id) {
       termIds.push(id);
     }
-    await sleep(REQUEST_DELAY_MS);
+    await sleep(delayMs);
   }
 
   return termIds;
@@ -198,8 +258,12 @@ async function downloadImageFromUrl(imageUrl) {
 /**
  * Upload featured image to WordPress media library (from local file or URL)
  */
-async function uploadMedia(filePathOrUrl) {
+async function uploadMedia(filePathOrUrl, apiInstance = currentApi, delayMs = currentConfig?.REQUEST_DELAY_MS || 300) {
   if (!filePathOrUrl || !filePathOrUrl.trim()) return null;
+  if (!apiInstance) {
+    console.error('❌ API instance not initialized.');
+    return null;
+  }
 
   let fileBuffer, fileName, mimeType;
 
@@ -227,9 +291,9 @@ async function uploadMedia(filePathOrUrl) {
   }
 
   try {
-    await sleep(REQUEST_DELAY_MS);
+    await sleep(delayMs);
     
-    const response = await api.post('/media', fileBuffer, {
+    const response = await apiInstance.post('/media', fileBuffer, {
       headers: {
         'Content-Type': mimeType,
         'Content-Disposition': `attachment; filename="${fileName}"`,
@@ -251,11 +315,15 @@ async function uploadMedia(filePathOrUrl) {
 /**
  * Find existing post by slug
  */
-async function findPostBySlug(slug) {
+async function findPostBySlug(slug, apiInstance = currentApi) {
   if (!slug || !slug.trim()) return null;
+  if (!apiInstance) {
+    console.error('❌ API instance not initialized.');
+    return null;
+  }
 
   try {
-    const response = await api.get('/posts', {
+    const response = await apiInstance.get('/posts', {
       params: { slug: slug.trim(), per_page: 1 },
     });
 
@@ -273,8 +341,12 @@ async function findPostBySlug(slug) {
 /**
  * Find existing post by title
  */
-async function findPostByTitle(title) {
+async function findPostByTitle(title, apiInstance = currentApi) {
   if (!title || !title.trim()) return null;
+  if (!apiInstance) {
+    console.error('❌ API instance not initialized.');
+    return null;
+  }
 
   try {
     // Normalize title for comparison (remove HTML entities, trim, lowercase)
@@ -308,7 +380,7 @@ async function findPostByTitle(title) {
     let totalChecked = 0;
 
     while (hasMore) {
-      const response = await api.get('/posts', {
+      const response = await apiInstance.get('/posts', {
         params: { 
           per_page: perPage,
           page: page,
@@ -376,7 +448,11 @@ async function findPostByTitle(title) {
 /**
  * Create or update a post
  */
-async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
+async function createOrUpdatePost(row, rowNumber, progressCallback = null, apiInstance = currentApi, config = currentConfig) {
+  if (!apiInstance || !config) {
+    throw new Error('API instance and config must be initialized. Call initializeClient() first.');
+  }
+
   const result = {
     rowNumber,
     title: row.title || 'Untitled',
@@ -399,7 +475,7 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
     const postData = {
       title: row.title.trim(),
       content: row.content.trim(),
-      status: row.status?.trim() || DEFAULT_STATUS,
+      status: row.status?.trim() || config.DEFAULT_STATUS,
     };
 
     // Add optional fields
@@ -422,7 +498,7 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
 
     // Resolve categories
     if (row.categories?.trim()) {
-      const categoryIds = await resolveTerms(row.categories, 'categories');
+      const categoryIds = await resolveTerms(row.categories, 'categories', apiInstance, config.REQUEST_DELAY_MS);
       if (categoryIds.length > 0) {
         postData.categories = categoryIds;
       }
@@ -430,7 +506,7 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
 
     // Resolve tags
     if (row.tags?.trim()) {
-      const tagIds = await resolveTerms(row.tags, 'tags');
+      const tagIds = await resolveTerms(row.tags, 'tags', apiInstance, config.REQUEST_DELAY_MS);
       if (tagIds.length > 0) {
         postData.tags = tagIds;
       }
@@ -439,7 +515,7 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
     // Upload featured image if provided (supports both local path and URL)
     const imagePath = row.featured_image_path?.trim() || row.featured_image_url?.trim();
     if (imagePath) {
-      const mediaId = await uploadMedia(imagePath);
+      const mediaId = await uploadMedia(imagePath, apiInstance, config.REQUEST_DELAY_MS);
       if (mediaId) {
         postData.featured_media = mediaId;
       }
@@ -448,7 +524,7 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
     // Check for existing post by title first (prevent duplicates)
     // This check happens BEFORE creating the post to prevent duplicate creation
     console.log(`[${rowNumber}] 🔍 Checking for duplicate post with title: "${postData.title}"`);
-    const existingPostByTitle = await findPostByTitle(postData.title);
+    const existingPostByTitle = await findPostByTitle(postData.title, apiInstance);
     if (existingPostByTitle) {
       const errorMsg = `Post with title "${postData.title}" already exists (ID: ${existingPostByTitle}). Duplicate posts are not allowed.`;
       console.error(`[${rowNumber}] ⚠️  DUPLICATE DETECTED: ${errorMsg}`);
@@ -459,15 +535,15 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
     // Check for existing post by slug (idempotency)
     let existingPostId = null;
     if (postData.slug) {
-      existingPostId = await findPostBySlug(postData.slug);
+      existingPostId = await findPostBySlug(postData.slug, apiInstance);
     }
 
     // Create or update
-    await sleep(REQUEST_DELAY_MS);
+    await sleep(config.REQUEST_DELAY_MS);
 
     if (existingPostId) {
       // Update existing post
-      const updateResponse = await api.post(`/posts/${existingPostId}`, postData);
+      const updateResponse = await apiInstance.post(`/posts/${existingPostId}`, postData);
       result.action = 'updated';
       result.postId = updateResponse.data.id;
       result.status = updateResponse.data.status;
@@ -476,7 +552,7 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
       if (progressCallback) progressCallback({ type: 'success', message, rowNumber, postId: result.postId, title: result.title });
     } else {
       // Create new post
-      const createResponse = await api.post('/posts', postData);
+      const createResponse = await apiInstance.post('/posts', postData);
       result.action = 'created';
       result.postId = createResponse.data.id;
       result.status = createResponse.data.status;
@@ -501,27 +577,48 @@ async function createOrUpdatePost(row, rowNumber, progressCallback = null) {
  * Main execution
  */
 async function main() {
+  // Get client from command line argument or environment variable
+  let clientKey = null;
+  let csvPath = null;
+  
+  // Parse command line arguments
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+    if (arg.startsWith('--client=')) {
+      clientKey = arg.split('=')[1];
+    } else if (arg === '--client' && i + 1 < process.argv.length) {
+      clientKey = process.argv[++i];
+    } else if (!csvPath && !arg.startsWith('--')) {
+      csvPath = arg;
+    }
+  }
+  
+  // Initialize client
+  const { config, api: clientApi } = initializeClient(clientKey);
+  
   console.log('🚀 WordPress Bulk Uploader\n');
-  console.log(`Site: ${WP_SITE}`);
-  console.log(`Default Status: ${DEFAULT_STATUS}`);
-  console.log(`Request Delay: ${REQUEST_DELAY_MS}ms`);
+  console.log(`Client: ${config.CLIENT_NAME}`);
+  console.log(`Site: ${config.WP_SITE}`);
+  console.log(`Default Status: ${config.DEFAULT_STATUS}`);
+  console.log(`Request Delay: ${config.REQUEST_DELAY_MS}ms`);
 
   // Get CSV path: command-line argument > interactive prompt (with env as suggestion) > default
-  let csvPath;
-  
-  // If command-line argument provided, use it directly (skip prompt)
-  if (process.argv[2]) {
-    csvPath = process.argv[2];
-    console.log(`\nCSV: ${csvPath} (from command-line argument)`);
+  if (!csvPath) {
+    if (process.argv[2] && !process.argv[2].startsWith('--')) {
+      csvPath = process.argv[2];
+      console.log(`\nCSV: ${csvPath} (from command-line argument)`);
+    } else {
+      // Always prompt for file path, showing env variable as suggestion if it exists
+      const suggestedPath = process.env.CSV_PATH || 'posts.csv';
+      csvPath = await promptForCsvPath(suggestedPath);
+      console.log(`\nCSV: ${csvPath}`);
+    }
   } else {
-    // Always prompt for file path, showing env variable as suggestion if it exists
-    const suggestedPath = process.env.CSV_PATH || 'posts.csv';
-    csvPath = await promptForCsvPath(suggestedPath);
-    console.log(`\nCSV: ${csvPath}`);
+    console.log(`\nCSV: ${csvPath} (from command-line argument)`);
   }
 
   // Check connectivity
-  const isConnected = await checkConnectivity();
+  const isConnected = await checkConnectivity(clientApi, config.WP_SITE);
   if (!isConnected) {
     process.exit(1);
   }
@@ -538,6 +635,7 @@ async function main() {
     console.error(`   - Use absolute path: C:\\Users\\YourName\\Documents\\file.csv`);
     console.error(`   - Use relative path: posts.csv (from script directory)`);
     console.error(`   - Or pass as argument: npm run upload "C:\\path\\to\\file.csv"`);
+    console.error(`   - Use --client=client_key to specify client`);
     process.exit(1);
   }
 
@@ -549,7 +647,7 @@ async function main() {
   // Process each row
   console.log('📤 Starting upload process...\n');
   for (let i = 0; i < rows.length; i++) {
-    const result = await createOrUpdatePost(rows[i], i + 1);
+    const result = await createOrUpdatePost(rows[i], i + 1, null, clientApi, config);
     logResults.push(result);
   }
 
@@ -582,14 +680,17 @@ async function main() {
 /**
  * Process CSV file (exported for use by web server)
  */
-export async function processCsvFile(csvPath, progressCallback = null) {
+export async function processCsvFile(csvPath, progressCallback = null, clientKey = 'default') {
+  // Initialize client
+  const { config, api: clientApi } = initializeClient(clientKey);
+  
   // Reset logging for new run
   logResults = [];
   startTime = Date.now();
 
   // Check connectivity
-  if (progressCallback) progressCallback({ type: 'info', message: '🔍 Checking WordPress REST API connectivity...' });
-  const isConnected = await checkConnectivity();
+  if (progressCallback) progressCallback({ type: 'info', message: `🔍 Checking WordPress REST API connectivity for ${config.CLIENT_NAME}...` });
+  const isConnected = await checkConnectivity(clientApi, config.WP_SITE);
   if (!isConnected) {
     throw new Error('WordPress REST API is not accessible. Check your configuration.');
   }
@@ -612,7 +713,7 @@ export async function processCsvFile(csvPath, progressCallback = null) {
 
   // Process each row
   for (let i = 0; i < rows.length; i++) {
-    const result = await createOrUpdatePost(rows[i], i + 1, progressCallback);
+    const result = await createOrUpdatePost(rows[i], i + 1, progressCallback, clientApi, config);
     logResults.push(result);
   }
 
