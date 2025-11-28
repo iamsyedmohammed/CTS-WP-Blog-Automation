@@ -15,73 +15,25 @@ dotenv.config();
 
 /**
  * Parse and get client configuration
- * Supports both single-client (WP_SITE, WP_USER, WP_APP_PASSWORD) 
- * and multi-client (CLIENTS_CONFIG) modes
+ * CTS-only mode: uses single-client configuration (WP_SITE, WP_USER, WP_APP_PASSWORD)
  */
 function getClientConfig(clientId = null) {
-  // Check for multi-client configuration
-  if (process.env.CLIENTS_CONFIG) {
-    try {
-      const clientsConfig = JSON.parse(process.env.CLIENTS_CONFIG);
-      
-      // If clientId provided, return that specific client
-      if (clientId && clientsConfig[clientId]) {
-        const client = clientsConfig[clientId];
-        return {
-          wp_site: client.wp_site?.replace(/\/$/, '') || '',
-          wp_user: client.wp_user || '',
-          wp_app_password: client.wp_app_password || '',
-          default_status: client.default_status || 'draft',
-          request_delay_ms: parseInt(client.request_delay_ms || '300', 10),
-          name: client.name || clientId,
-        };
-      }
-      
-      // If no clientId, return first client or null
-      const firstClientId = Object.keys(clientsConfig)[0];
-      if (firstClientId) {
-        const client = clientsConfig[firstClientId];
-        return {
-          wp_site: client.wp_site?.replace(/\/$/, '') || '',
-          wp_user: client.wp_user || '',
-          wp_app_password: client.wp_app_password || '',
-          default_status: client.default_status || 'draft',
-          request_delay_ms: parseInt(client.request_delay_ms || '300', 10),
-          name: client.name || firstClientId,
-        };
-      }
-    } catch (error) {
-      console.error('⚠️  Failed to parse CLIENTS_CONFIG:', error.message);
-    }
-  }
-  
-  // Fall back to single-client configuration
+  // CTS-only: Always use single-client configuration
   return {
     wp_site: process.env.WP_SITE?.replace(/\/$/, '') || '',
     wp_user: process.env.WP_USER || '',
     wp_app_password: process.env.WP_APP_PASSWORD || '',
     default_status: process.env.DEFAULT_STATUS || 'draft',
     request_delay_ms: parseInt(process.env.REQUEST_DELAY_MS || '300', 10),
-    name: 'WordPress Site',
+    name: 'CTS',
   };
 }
 
 /**
  * Get all available clients
+ * CTS-only mode: returns empty array (no client selection needed)
  */
 export function getAvailableClients() {
-  if (process.env.CLIENTS_CONFIG) {
-    try {
-      const clientsConfig = JSON.parse(process.env.CLIENTS_CONFIG);
-      return Object.entries(clientsConfig).map(([id, config]) => ({
-        id,
-        name: config.name || id,
-        wp_site: config.wp_site,
-      }));
-    } catch (error) {
-      console.error('⚠️  Failed to parse CLIENTS_CONFIG:', error.message);
-    }
-  }
   return [];
 }
 

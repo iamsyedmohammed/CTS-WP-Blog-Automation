@@ -6,11 +6,7 @@ const progressText = document.getElementById('progressText');
 const resultSection = document.getElementById('resultSection');
 const errorSection = document.getElementById('errorSection');
 const errorMessage = document.getElementById('errorMessage');
-const modeUpload = document.getElementById('modeUpload');
-const modeUpdate = document.getElementById('modeUpdate');
 const actionText = document.getElementById('actionText');
-const clientSelector = document.getElementById('clientSelector');
-const clientSelect = document.getElementById('clientSelect');
 
 const fileLabel = document.getElementById('fileLabel');
 const fileText = document.getElementById('fileText');
@@ -56,62 +52,7 @@ clearFileBtn.addEventListener('click', (e) => {
     }
 });
 
-// Load available clients on page load
-async function loadClients() {
-  try {
-    const response = await fetch('/api/clients', {
-      credentials: 'include'
-    });
-    const data = await response.json();
-    
-    if (data.success && data.clients && data.clients.length > 0) {
-      // Show client selector
-      clientSelector.style.display = 'block';
-      
-      // Clear existing options
-      clientSelect.innerHTML = '';
-      
-      // Add default option
-      const defaultOption = document.createElement('option');
-      defaultOption.value = '';
-      defaultOption.textContent = '-- Select a WordPress Site --';
-      clientSelect.appendChild(defaultOption);
-      
-      // Add client options
-      data.clients.forEach(client => {
-        const option = document.createElement('option');
-        option.value = client.id;
-        option.textContent = `${client.name} (${client.wp_site})`;
-        clientSelect.appendChild(option);
-      });
-    } else {
-      // Hide client selector if no clients or single client mode
-      clientSelector.style.display = 'none';
-    }
-  } catch (error) {
-    console.error('Failed to load clients:', error);
-    // Hide client selector on error
-    clientSelector.style.display = 'none';
-  }
-}
-
-// Load clients when page loads
-loadClients();
-
-// Update action text based on mode
-function updateActionText() {
-  if (modeUpdate.checked) {
-    actionText.textContent = 'Update & Process';
-    uploadBtn.querySelector('i').className = 'fas fa-edit';
-  } else {
-    actionText.textContent = 'Upload & Process';
-    uploadBtn.querySelector('i').className = 'fas fa-upload';
-  }
-}
-
-// Listen for mode changes
-modeUpload.addEventListener('change', updateActionText);
-modeUpdate.addEventListener('change', updateActionText);
+// CTS-only mode - no client selection needed
 
 // Handle form submission
 form.addEventListener('submit', async (e) => {
@@ -135,9 +76,8 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  // Determine endpoint based on mode
-  const isUpdateMode = modeUpdate.checked;
-  const endpoint = isUpdateMode ? '/update' : '/upload';
+  // Always use upload endpoint for CTS
+  const endpoint = '/upload';
 
   // Hide previous results/errors
   resultSection.style.display = 'none';
@@ -164,15 +104,10 @@ form.addEventListener('submit', async (e) => {
     const sessionId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     const eventSource = connectToProgress(sessionId);
     
-        const formData = new FormData();
-        formData.append('csvfile', file);
-        formData.append('sessionId', sessionId);
-        
-        // Add client ID if selected
-        const selectedClientId = clientSelect.value;
-        if (selectedClientId) {
-          formData.append('clientId', selectedClientId);
-        }
+    const formData = new FormData();
+    formData.append('csvfile', file);
+    formData.append('sessionId', sessionId);
+    // CTS-only: no client ID needed, uses default config
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -196,7 +131,7 @@ form.addEventListener('submit', async (e) => {
         showResults(data.result);
       }, 500);
     } else {
-      showError(data.error || (isUpdateMode ? 'Update failed' : 'Upload failed'));
+      showError(data.error || 'Upload failed');
     }
   } catch (error) {
     showError('Error: ' + error.message);
