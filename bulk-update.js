@@ -98,7 +98,7 @@ function promptForCsvPath(defaultPath) {
       output: process.stdout
     });
 
-    const promptText = defaultPath 
+    const promptText = defaultPath
       ? `\n📁 Enter CSV file path [${defaultPath}]: `
       : '\n📁 Enter CSV file path: ';
 
@@ -116,10 +116,10 @@ function promptForCsvPath(defaultPath) {
 async function loadCsv(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
-    const fullPath = path.isAbsolute(filePath) 
-      ? filePath 
+    const fullPath = path.isAbsolute(filePath)
+      ? filePath
       : path.resolve(__dirname, filePath);
-    
+
     if (!fs.existsSync(fullPath)) {
       reject(new Error(`CSV file not found: ${fullPath}`));
       return;
@@ -172,7 +172,7 @@ async function getOrCreateTerm(name, taxonomy = 'categories', apiInstance = api,
   const trimmedName = name.trim();
   const currentApi = apiInstance || api;
   const config = clientConfig || defaultConfig;
-  
+
   try {
     const searchResponse = await currentApi.get(`/${taxonomy}`, {
       params: { search: trimmedName, per_page: 100 },
@@ -221,6 +221,28 @@ async function resolveTerms(termString, taxonomy, apiInstance = api, clientConfi
 }
 
 /**
+ * Convert Google Drive URL to direct download URL
+ */
+function convertGoogleDriveUrl(url) {
+  if (!url) return url;
+
+  // Check if it's a Google Drive URL
+  if (url.includes('drive.google.com')) {
+    // Try to extract the ID
+    // Matches /file/d/ID/view or /open?id=ID
+    const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+
+    if (idMatch && idMatch[1]) {
+      const fileId = idMatch[1];
+      console.log(`   🔄 Converting Google Drive URL to direct link (ID: ${fileId})`);
+      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+  }
+
+  return url;
+}
+
+/**
  * Download image from URL
  */
 async function downloadImageFromUrl(imageUrl) {
@@ -229,7 +251,7 @@ async function downloadImageFromUrl(imageUrl) {
       responseType: 'arraybuffer',
       timeout: 30000,
     });
-    
+
     return {
       buffer: Buffer.from(response.data),
       mimeType: response.headers['content-type'] || mime.lookup(imageUrl) || 'image/jpeg',
@@ -250,17 +272,21 @@ async function uploadMedia(filePathOrUrl, apiInstance = api, clientConfig = null
   if (!filePathOrUrl || !filePathOrUrl.trim()) return null;
 
   let fileBuffer, fileName, mimeType;
+  let processedUrl = filePathOrUrl.trim();
 
-  if (filePathOrUrl.trim().startsWith('http://') || filePathOrUrl.trim().startsWith('https://')) {
-    const downloaded = await downloadImageFromUrl(filePathOrUrl.trim());
+  if (processedUrl.startsWith('http://') || processedUrl.startsWith('https://')) {
+    // Handle Google Drive URLs
+    processedUrl = convertGoogleDriveUrl(processedUrl);
+
+    const downloaded = await downloadImageFromUrl(processedUrl);
     if (!downloaded) return null;
-    
+
     fileBuffer = downloaded.buffer;
     fileName = downloaded.fileName;
     mimeType = downloaded.mimeType;
   } else {
-    const fullPath = path.resolve(__dirname, filePathOrUrl);
-    
+    const fullPath = path.resolve(__dirname, processedUrl);
+
     if (!fs.existsSync(fullPath)) {
       console.error(`⚠️  Image file not found: ${fullPath}`);
       return null;
@@ -273,7 +299,7 @@ async function uploadMedia(filePathOrUrl, apiInstance = api, clientConfig = null
 
   try {
     await sleep(config.request_delay_ms);
-    
+
     const response = await currentApi.post('/media', fileBuffer, {
       headers: {
         'Content-Type': mimeType,
@@ -363,14 +389,14 @@ async function findPostByTitle(title, apiInstance = api) {
     };
 
     const normalizedSearchTitle = normalizeTitle(title);
-    
+
     let page = 1;
     const perPage = 100;
     let hasMore = true;
 
     while (hasMore) {
       const response = await currentApi.get('/posts', {
-        params: { 
+        params: {
           per_page: perPage,
           page: page,
           status: 'any',
@@ -387,7 +413,7 @@ async function findPostByTitle(title, apiInstance = api) {
       for (const post of response.data) {
         const postTitleRaw = post.title?.rendered || post.title?.raw || post.title || '';
         const postTitleNormalized = normalizeTitle(postTitleRaw);
-        
+
         if (postTitleNormalized === normalizedSearchTitle) {
           return post.id;
         }
@@ -519,27 +545,56 @@ async function updatePost(row, rowNumber, progressCallback = null, apiInstance =
       }
     }
 
-    // Check if there's anything to update
-    if (Object.keys(updateData).length === 0) {
-      throw new Error('No fields to update. Provide at least one field to update.');
+    // Handle Meta Title, Description, and Focus Keyword
+    const metaTitle = row.meta_title?.trim();
+    const metaDesc = row.meta_description?.trim();
+    const focusKw = row.focus_keyword?.trim();
+
+    if (metaTitle || metaDesc || focusKw) {
+      // When using register_rest_field (via our helper plugin), these must be top-level fields
+
+      if (metaTitle) {
+        // Generic
+        updateData.meta_title = metaTitle;
+        // Yoast SEO
+        updateData._yoast_wpseo_title = metaTitle;
+        // Rank Math
+        updateData.rank_math_title = metaTitle;
+      }
+
+      if (metaDesc) {
+        // Generic
+        updateData.meta_description = metaDesc;
+        // Yoast SEO
+        updateData._yoast_wpseo_metadesc = metaDesc;
+        // Rank Math
+        updateData.rank_math_description = metaDesc;
+      }
+
+      if (focusKw) {
+        // Yoast SEO
+        updateData._yoast_wpseo_focuskw = focusKw;
+        // Rank Math
+        updateData.rank_math_focus_keyword = focusKw;
+      }
     }
 
     // Perform the update
     await sleep(config.request_delay_ms);
     const updateResponse = await currentApi.post(`/posts/${postId}`, updateData);
-    
+
     result.action = 'updated';
     result.postId = updateResponse.data.id;
     result.status = updateResponse.data.status;
     const message = `[${rowNumber}] ✅ Updated post ${result.postId}: ${result.title}`;
     console.log(message);
     if (progressCallback) {
-      progressCallback({ 
-        type: 'success', 
-        message, 
-        rowNumber, 
-        postId: result.postId, 
-        title: result.title 
+      progressCallback({
+        type: 'success',
+        message,
+        rowNumber,
+        postId: result.postId,
+        title: result.title
       });
     }
   } catch (error) {
@@ -550,12 +605,12 @@ async function updatePost(row, rowNumber, progressCallback = null, apiInstance =
     const errorMessage = `[${rowNumber}] ❌ Failed: ${result.title} - ${result.error}`;
     console.error(errorMessage);
     if (progressCallback) {
-      progressCallback({ 
-        type: 'error', 
-        message: errorMessage, 
-        rowNumber, 
-        title: result.title, 
-        error: result.error 
+      progressCallback({
+        type: 'error',
+        message: errorMessage,
+        rowNumber,
+        title: result.title,
+        error: result.error
       });
     }
   }
@@ -572,7 +627,7 @@ async function main() {
   console.log(`Request Delay: ${REQUEST_DELAY_MS}ms`);
 
   let csvPath;
-  
+
   if (process.argv[2]) {
     csvPath = process.argv[2];
     console.log(`\nCSV: ${csvPath} (from command-line argument)`);
@@ -613,7 +668,7 @@ async function main() {
   }
 
   const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
-  const logPath = isVercel 
+  const logPath = isVercel
     ? path.join('/tmp', 'update_log.json')
     : path.resolve(__dirname, 'update_log.json');
   fs.writeFileSync(logPath, JSON.stringify(logResults, null, 2));
@@ -673,10 +728,10 @@ export async function processUpdateCsvFile(csvPath, progressCallback = null, cli
   }
 
   const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
-  const logPath = isVercel 
+  const logPath = isVercel
     ? path.join('/tmp', 'update_log.json')
     : path.resolve(__dirname, 'update_log.json');
-  
+
   try {
     fs.writeFileSync(logPath, JSON.stringify(logResults, null, 2));
   } catch (error) {
@@ -706,4 +761,3 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.includes
     process.exit(1);
   });
 }
-

@@ -92,3 +92,5 @@ pids
 tmp/
 temp/
 
+        expose-seo-meta.php
+        expose-seo-meta.zip

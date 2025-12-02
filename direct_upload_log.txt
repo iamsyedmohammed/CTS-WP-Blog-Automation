@@ -1,0 +1,15 @@
+Importing bulk-upload.js...
+Import successful.
+Running bulk upload with: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\posts.csv
+🔍 Checking WordPress REST API connectivity...
+✅ WordPress REST API is accessible
+
+   🔄 Converting Google Drive URL to direct link (ID: 106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z)
+[1] 🔍 Checking for duplicate post with title: "Weekend Brunch at OMG Nafisa's Kitchen: What to Try First"
+🔍 Searching for duplicate. Normalized title: "weekend brunch at omg nafisa's kitchen: what to try first"
+🔍 Checking page 1, 100 posts (total checked: 100)
+🔍 Checking page 2, 14 posts (total checked: 114)
+✅ No duplicate found after checking 114 posts
+[1] ✅ No duplicate found for title: "Weekend Brunch at OMG Nafisa's Kitchen: What to Try First"
+[1] ✅ created post 5819: Weekend Brunch at OMG Nafisa's Kitchen: What to Try First
+Bulk upload completed.

@@ -1,0 +1,12 @@
+Importing bulk-update.js...
+Import successful.
+Running bulk update with: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\posts.csv
+Bulk update completed.
+Importing bulk-update.js...
+Import successful.
+Running bulk update with: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\posts.csv
+🔍 Checking WordPress REST API connectivity...
+✅ WordPress REST API is accessible
+
+ERROR: [1] ❌ Failed: Weekend Brunch at OMG Nafisa's Kitchen: What to Try First - Post with slug "weekend-brunch-omg-nafisa-kitchen" not found
+Bulk update completed.

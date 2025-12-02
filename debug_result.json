@@ -1,0 +1,12 @@
+{
+  "logs": [
+    "Getting a recent post...",
+    "Testing on Post ID: 5772, Title: Revolutionizing Cloud Computing for Businesses",
+    "Sending update: {\n  \"_yoast_wpseo_title\": \"TEST META TITLE 1764622794882\",\n  \"_yoast_wpseo_metadesc\": \"TEST META DESC 1764622794882\"\n}",
+    "Update status: 200",
+    "Meta in response (Top Level):",
+    "_yoast_wpseo_title: TEST META TITLE 1764622794882",
+    "_yoast_wpseo_metadesc: TEST META DESC 1764622794882",
+    "✅ SUCCESS: Yoast title updated!"
+  ]
+}

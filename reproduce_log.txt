@@ -1,0 +1,53 @@
+Original URL: https://drive.google.com/file/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z/view?usp=drive_link
+   🔄 Converting Google Drive URL to direct link (ID: 106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z)
+Converted URL: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Downloading from: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Response status: 200
+Content-Type: text/html; charset=utf-8
+Content-Length: undefined
+Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download.jpg
+Original URL: https://drive.google.com/file/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z/view?usp=drive_link
+Testing LH3 URL: https://lh3.googleusercontent.com/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Downloading from: https://lh3.googleusercontent.com/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Response status: 200
+Content-Type: text/html; charset=utf-8
+Content-Length: undefined
+LH3 Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download_lh3.jpg
+   🔄 Converting Google Drive URL to direct link (ID: 106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z)
+Converted URL: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Downloading from: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Response status: 200
+Content-Type: text/html; charset=utf-8
+Content-Length: undefined
+Standard Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download_std.jpg
+Original URL: https://drive.google.com/file/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z/view?usp=sharing
+Testing LH3 URL: https://lh3.googleusercontent.com/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Downloading from: https://lh3.googleusercontent.com/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Response status: 200
+Content-Type: image/png
+Content-Length: 1265699
+LH3 Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download_lh3.jpg
+   🔄 Converting Google Drive URL to direct link (ID: 106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z)
+Converted URL: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Downloading from: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Response status: 200
+Content-Type: image/png
+Content-Length: 1265699
+Standard Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download_std.jpg
+Original URL: https://drive.google.com/file/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z/view?usp=sharing
+Testing LH3 URL: https://lh3.googleusercontent.com/d/106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Detected Content-Type: image/png
+Initial Filename: ComfyUI_00003_.png
+LH3 Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download_lh3.jpg
+   🔄 Converting Google Drive URL to direct link (ID: 106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z)
+Converted URL: https://drive.google.com/uc?export=download&id=106UqbiAdo-z6ROElnyEqHI-8Klhb_g2Z
+Detected Content-Type: image/png
+Initial Filename: ComfyUI_00003_.png
+Standard Download successful!
+Saved to: C:\WP Bulk Blog Automation CTS\Wordpress Blog Upload Automation\test_download_std.jpg
